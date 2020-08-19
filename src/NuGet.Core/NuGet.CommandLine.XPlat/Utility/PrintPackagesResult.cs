@@ -8,10 +8,11 @@ namespace NuGet.CommandLine.XPlat.Utility
     /// </summary>
     internal readonly struct PrintPackagesResult
     {
-        public PrintPackagesResult(bool autoReferenceFound, bool deprecatedFound)
+        public PrintPackagesResult(bool autoReferenceFound, bool deprecatedFound, bool vulnerableFound)
         {
             AutoReferenceFound = autoReferenceFound;
             DeprecatedFound = deprecatedFound;
+            VulnerableFound = vulnerableFound;
         }
 
         /// <summary>
@@ -23,5 +24,10 @@ namespace NuGet.CommandLine.XPlat.Utility
         /// <c>True</c> when a deprecated package was found; otherwise <c>False</c>.
         /// </summary>
         public bool DeprecatedFound { get; }
+
+        /// <summary>
+        /// <c>True</c> when a vulnerable package was found; otherwise <c>False</c>.
+        /// </summary>
+        public bool VulnerableFound { get; }
     }
 }

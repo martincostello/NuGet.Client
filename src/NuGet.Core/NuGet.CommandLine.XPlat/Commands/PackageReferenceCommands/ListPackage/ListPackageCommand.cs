@@ -53,6 +53,11 @@ namespace NuGet.CommandLine.XPlat
                     Strings.ListPkg_DeprecatedDescription,
                     CommandOptionType.NoValue);
 
+                var includeVulnerable = listpkg.Option(
+                    "--vulnerable",
+                    Strings.ListPkg_VulnerableDescription,
+                    CommandOptionType.NoValue);
+
                 var includeTransitive = listpkg.Option(
                     "--include-transitive",
                     Strings.ListPkg_TransitiveDescription,
@@ -112,6 +117,7 @@ namespace NuGet.CommandLine.XPlat
                         framework.Values,
                         includeOutdated.HasValue(),
                         includeDeprecated.HasValue(),
+                        includeVulnerable.HasValue(),
                         includeTransitive.HasValue(),
                         prerelease.HasValue(),
                         highestPatch.HasValue(),
@@ -119,9 +125,19 @@ namespace NuGet.CommandLine.XPlat
                         logger,
                         CancellationToken.None);
 
+                    if (includeVulnerable.HasValue() && includeDeprecated.HasValue())
+                    {
+                        throw new ArgumentException(Strings.ListPkg_InvalidOptionsVulnerableAndDeprecated);
+                    }
+
                     if (includeOutdated.HasValue() && includeDeprecated.HasValue())
                     {
                         throw new ArgumentException(Strings.ListPkg_InvalidOptionsOutdatedAndDeprecated);
+                    }
+
+                    if (includeOutdated.HasValue() && includeVulnerable.HasValue())
+                    {
+                        throw new ArgumentException(Strings.ListPkg_InvalidOptionsOutdatedAndVulnerable);
                     }
 
                     DefaultCredentialServiceUtility.SetupDefaultCredentialService(getLogger(), !interactive.HasValue());

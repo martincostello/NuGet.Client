@@ -17,6 +17,7 @@ namespace NuGet.CommandLine.XPlat
         public IEnumerable<string> Frameworks { get; }
         public bool IncludeOutdated { get; }
         public bool IncludeDeprecated { get; }
+        public bool IncludeVulnerable { get; }
         public bool IncludeTransitive { get; }
         public bool Prerelease { get; }
         public bool HighestPatch { get; }
@@ -33,6 +34,7 @@ namespace NuGet.CommandLine.XPlat
         /// <param name="frameworks"> The user inputed frameworks to look up for their packages </param>
         /// <param name="includeOutdated"> Bool for --outdated present </param>
         /// <param name="includeDeprecated"> Bool for --deprecated present </param>
+        /// <param name="includeVulnerable"> Bool for --vulnerable present </param>
         /// <param name="includeTransitive"> Bool for --include-transitive present </param>
         /// <param name="prerelease"> Bool for --include-prerelease present </param>
         /// <param name="highestPatch"> Bool for --highest-patch present </param>
@@ -45,6 +47,7 @@ namespace NuGet.CommandLine.XPlat
             IEnumerable<string> frameworks,
             bool includeOutdated,
             bool includeDeprecated,
+            bool includeVulnerable,
             bool includeTransitive,
             bool prerelease,
             bool highestPatch,
@@ -57,6 +60,7 @@ namespace NuGet.CommandLine.XPlat
             Frameworks = frameworks ?? throw new ArgumentNullException(nameof(frameworks));
             IncludeOutdated = includeOutdated;
             IncludeDeprecated = includeDeprecated;
+            IncludeVulnerable = includeVulnerable;
             IncludeTransitive = includeTransitive;
             Prerelease = prerelease;
             HighestPatch = highestPatch;

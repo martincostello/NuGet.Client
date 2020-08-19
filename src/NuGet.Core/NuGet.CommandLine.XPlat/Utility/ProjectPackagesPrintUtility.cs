@@ -24,12 +24,14 @@ namespace NuGet.CommandLine.XPlat.Utility
         /// <param name="transitive">Whether include-transitive flag exists or not</param>
         /// <param name="outdated">Whether outdated flag exists or not</param>
         /// <param name="deprecated">Whether deprecated flag exists or not</param>
+        /// <param name="vulnerable">Whether vulnerable flag exists or not</param>
         internal static async Task<PrintPackagesResult> PrintPackagesAsync(
             IEnumerable<FrameworkPackages> packages,
             string projectName,
             bool transitive,
             bool outdated,
-            bool deprecated)
+            bool deprecated,
+            bool vulnerable)
         {
             if (outdated)
             {
@@ -39,6 +41,10 @@ namespace NuGet.CommandLine.XPlat.Utility
             {
                 Console.WriteLine(string.Format(Strings.ListPkg_ProjectDeprecationsHeaderLog, projectName));
             }
+            else if (vulnerable)
+            {
+                Console.WriteLine(string.Format(Strings.ListPkg_ProjectVulnerabilitiesHeaderLog, projectName));
+            }
             else
             {
                 Console.WriteLine(string.Format(Strings.ListPkg_ProjectHeaderLog, projectName));
@@ -46,6 +52,7 @@ namespace NuGet.CommandLine.XPlat.Utility
 
             var autoReferenceFound = false;
             var deprecatedFound = false;
+            var vulnerableFound = false;
             foreach (var frameworkPackages in packages)
             {
                 var frameworkTopLevelPackages = frameworkPackages.TopLevelPackages;
@@ -65,6 +72,10 @@ namespace NuGet.CommandLine.XPlat.Utility
                     {
                         Console.WriteLine(string.Format("   [{0}]: " + Strings.ListPkg_NoDeprecationsForFramework, frameworkPackages.Framework));
                     }
+                    else if (vulnerable)
+                    {
+                        Console.WriteLine(string.Format("   [{0}]: " + Strings.ListPkg_NoVulnerabilitiesForFramework, frameworkPackages.Framework));
+                    }
                     else
                     {
                         Console.WriteLine(string.Format("   [{0}]: " + Strings.ListPkg_NoPackagesForFramework, frameworkPackages.Framework));
@@ -82,24 +93,25 @@ namespace NuGet.CommandLine.XPlat.Utility
                     // Print top-level packages
                     if (frameworkTopLevelPackages.Any())
                     {
-                        var printPackagesTableResult = await PrintPackagesTableAsync(frameworkTopLevelPackages, printingTransitive: false, outdated, deprecated);
+                        var printPackagesTableResult = await PrintPackagesTableAsync(frameworkTopLevelPackages, printingTransitive: false, outdated, deprecated, vulnerable);
 
                         autoReferenceFound = autoReferenceFound || printPackagesTableResult.AutoReferenceFound;
                         deprecatedFound = deprecatedFound || printPackagesTableResult.DeprecatedFound;
+                        vulnerableFound = vulnerableFound || printPackagesTableResult.VulnerableFound;
                     }
 
                     // Print transitive packages
                     if (transitive && frameworkTransitivePackages.Any())
                     {
-                        var printPackagesTableResult = await PrintPackagesTableAsync(frameworkTransitivePackages, printingTransitive: true, outdated, deprecated);
+                        var printPackagesTableResult = await PrintPackagesTableAsync(frameworkTransitivePackages, printingTransitive: true, outdated, deprecated, vulnerable);
 
                         autoReferenceFound = autoReferenceFound || printPackagesTableResult.AutoReferenceFound;
-                        deprecatedFound = deprecatedFound || printPackagesTableResult.DeprecatedFound;
+                        vulnerableFound = vulnerableFound || printPackagesTableResult.VulnerableFound;
                     }
                 }
             }
 
-            return new PrintPackagesResult(autoReferenceFound, deprecatedFound);
+            return new PrintPackagesResult(autoReferenceFound, deprecatedFound, vulnerableFound);
         }
 
         /// <summary>
@@ -109,19 +121,22 @@ namespace NuGet.CommandLine.XPlat.Utility
         /// <param name="printingTransitive">Whether the function is printing transitive packages information.</param>
         /// <param name="outdated">Whether the function is printing outdated packages information.</param>
         /// <param name="deprecated">Whether the function is printing deprecated packages information.</param>
+        /// <param name="vulnerable">Whether the function is printing vulnerable packages information.</param>
         /// <returns>The table as a string</returns>
         internal static async Task<PrintPackagesResult> PrintPackagesTableAsync(
             IEnumerable<InstalledPackageReference> packages,
             bool printingTransitive,
             bool outdated,
-            bool deprecated)
+            bool deprecated,
+            bool vulnerable)
         {
             var autoReferenceFound = false;
             var deprecatedFound = false;
+            var vulnerableFound = false;
 
             if (!packages.Any())
             {
-                return new PrintPackagesResult(autoReferenceFound, deprecatedFound);
+                return new PrintPackagesResult(autoReferenceFound, deprecatedFound, vulnerableFound);
             }
 
             packages = packages.OrderBy(p => p.Name);
@@ -131,7 +146,7 @@ namespace NuGet.CommandLine.XPlat.Utility
             // this is used for
             IEnumerable<string> tableToPrint;
 
-            var headers = BuildTableHeaders(printingTransitive, outdated, deprecated);
+            var headers = BuildTableHeaders(printingTransitive, outdated, deprecated, vulnerable);
 
             if (outdated && printingTransitive)
             {
@@ -143,12 +158,14 @@ namespace NuGet.CommandLine.XPlat.Utility
                        async p => PrintVersion(
                                 p.ResolvedPackageMetadata.Identity.Version,
                                 await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
                                 outdated),
                        async p => p.LatestPackageMetadata?.Identity?.Version == null
                             ? Strings.ListPkg_NotFoundAtSources
                             : PrintVersion(
                                 p.LatestPackageMetadata.Identity.Version,
                                 await p.LatestPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.LatestPackageMetadata.Vulnerabilities != null,
                                 outdated));
             }
             else if (outdated && !printingTransitive)
@@ -170,12 +187,14 @@ namespace NuGet.CommandLine.XPlat.Utility
                        async p => PrintVersion(
                                 p.ResolvedPackageMetadata.Identity.Version,
                                 await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
                                 outdated),
                        async p => p.LatestPackageMetadata?.Identity?.Version == null
                             ? Strings.ListPkg_NotFoundAtSources
                             : PrintVersion(
                                 p.LatestPackageMetadata.Identity.Version,
                                 await p.LatestPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.LatestPackageMetadata.Vulnerabilities != null,
                                 outdated));
             }
             else if (deprecated && printingTransitive)
@@ -188,6 +207,7 @@ namespace NuGet.CommandLine.XPlat.Utility
                         async p => PrintVersion(
                                 p.ResolvedPackageMetadata.Identity.Version,
                                 await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
                                 outdated),
                         async p => PrintDeprecationReasons(await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync()),
                         async p => PrintAlternativePackage((await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync()).AlternatePackage));
@@ -210,9 +230,46 @@ namespace NuGet.CommandLine.XPlat.Utility
                         async p => PrintVersion(
                                 p.ResolvedPackageMetadata.Identity.Version,
                                 await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
                                 outdated),
                         async p => PrintDeprecationReasons(await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync()),
                         async p => PrintAlternativePackage((await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync()).AlternatePackage));
+            }
+            else if (vulnerable && printingTransitive)
+            {
+                tableToPrint = await packages.ToStringTableAsync(
+                        headers,
+                        p => Task.FromResult((object)string.Empty),
+                        p => Task.FromResult((object)p.Name),
+                        p => Task.FromResult((object)string.Empty),
+                        p => Task.FromResult((object)PrintVersion(
+                                p.ResolvedPackageMetadata.Identity.Version,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
+                                outdated)),
+                        p => Task.FromResult((object)PrintVulnerabilities(p.ResolvedPackageMetadata.Vulnerabilities)));
+            }
+            else if (vulnerable && !printingTransitive)
+            {
+                tableToPrint = await packages.ToStringTableAsync(
+                        headers,
+                        p => Task.FromResult((object)string.Empty),
+                        p => Task.FromResult((object)p.Name),
+                        p =>
+                        {
+                            if (p.AutoReference)
+                            {
+                                autoReferenceFound = true;
+                                return Task.FromResult((object)"(A)");
+                            }
+                            return Task.FromResult((object)string.Empty);
+                        },
+                        p => Task.FromResult((object)PrintVersion(
+                                p.ResolvedPackageMetadata.Identity.Version,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
+                                outdated)),
+                        p => Task.FromResult((object)PrintVulnerabilities(p.ResolvedPackageMetadata.Vulnerabilities)));
             }
             else if (printingTransitive)
             {
@@ -224,6 +281,7 @@ namespace NuGet.CommandLine.XPlat.Utility
                         async p => PrintVersion(
                                 p.ResolvedPackageMetadata.Identity.Version,
                                 await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
                                 outdated));
             }
             else
@@ -245,6 +303,7 @@ namespace NuGet.CommandLine.XPlat.Utility
                        async p => PrintVersion(
                                 p.ResolvedPackageMetadata.Identity.Version,
                                 await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync() != null,
+                                p.ResolvedPackageMetadata.Vulnerabilities != null,
                                 outdated));
             }
 
@@ -266,9 +325,17 @@ namespace NuGet.CommandLine.XPlat.Utility
                     deprecatedFound = true;
                     break;
                 }
+
+                var latestVulnerabilityMetadata = package.LatestPackageMetadata?.Vulnerabilities ?? Enumerable.Empty<PackageVulnerabilityMetadata>();
+                var resolvedVulnerabilityMetadata = package.ResolvedPackageMetadata?.Vulnerabilities ?? Enumerable.Empty<PackageVulnerabilityMetadata>();
+                if (latestDeprecationMetadata != null || resolvedDeprecationMetadata != null)
+                {
+                    vulnerableFound = true;
+                    break;
+                }
             }
 
-            return new PrintPackagesResult(autoReferenceFound, deprecatedFound);
+            return new PrintPackagesResult(autoReferenceFound, deprecatedFound, vulnerableFound);
         }
 
         private static string PrintDeprecationReasons(PackageDeprecationMetadata deprecationMetadata)
@@ -276,6 +343,13 @@ namespace NuGet.CommandLine.XPlat.Utility
             return deprecationMetadata == null
                 ? string.Empty
                 : string.Join(",", deprecationMetadata.Reasons);
+        }
+
+        private static string PrintVulnerabilities(IEnumerable<PackageVulnerabilityMetadata> vulnerabilityMetadata)
+        {
+            return vulnerabilityMetadata == null || !vulnerabilityMetadata.Any()
+                ? string.Empty
+                : string.Join(",", vulnerabilityMetadata.Select(v => v.AdvisoryUrl));
         }
 
         private static string PrintAlternativePackage(AlternatePackageMetadata alternatePackageMetadata)
@@ -298,14 +372,20 @@ namespace NuGet.CommandLine.XPlat.Utility
         /// </summary>
         /// <param name="version">The package version.</param>
         /// <param name="isDeprecated"><c>True</c> if the package is deprecated; otherwise <c>False</c>.</param>
+        /// <param name="isVulnerable"><c>True</c> if the package is vulnerable; otherwise <c>False</c>.</param>
         /// <param name="outdated">Whether the --outdated command option is provided.</param>
-        private static string PrintVersion(NuGetVersion version, bool isDeprecated, bool outdated)
+        private static string PrintVersion(NuGetVersion version, bool isDeprecated, bool isVulnerable, bool outdated)
         {
             var output = version.ToString();
 
             if (outdated && isDeprecated)
             {
                 output += " (D)";
+            }
+
+            if (isVulnerable)
+            {
+                output += " (V)";
             }
 
             return output;
@@ -317,8 +397,9 @@ namespace NuGet.CommandLine.XPlat.Utility
         /// <param name="printingTransitive">Whether the table is for transitive or not</param>
         /// <param name="outdated">Whether we have an outdated/latest column or not</param>
         /// <param name="deprecated">Whether we have the deprecated columns or not</param>
+        /// <param name="vulnerable">Whether we have the deprecated columns or not</param>
         /// <returns></returns>
-        internal static string[] BuildTableHeaders(bool printingTransitive, bool outdated, bool deprecated)
+        internal static string[] BuildTableHeaders(bool printingTransitive, bool outdated, bool deprecated, bool vulnerable)
         {
             var result = new List<string> { string.Empty };
 
@@ -333,7 +414,7 @@ namespace NuGet.CommandLine.XPlat.Utility
                 result.Add(Strings.ListPkg_TopLevelHeader);
                 result.Add(string.Empty);
 
-                if (!deprecated)
+                if (!deprecated && !vulnerable)
                 {
                     result.Add(Strings.ListPkg_Requested);
                 }
@@ -350,6 +431,11 @@ namespace NuGet.CommandLine.XPlat.Utility
             {
                 result.Add(Strings.ListPkg_DeprecationReasons);
                 result.Add(Strings.ListPkg_DeprecationAlternative);
+            }
+
+            if (vulnerable)
+            {
+                result.Add(Strings.ListPkg_Vulnerability);
             }
 
             return result.ToArray();

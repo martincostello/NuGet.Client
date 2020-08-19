@@ -38,6 +38,11 @@ namespace NuGet.CommandLine.XPlat
         internal static readonly Func<InstalledPackageReference, Task<bool>> TransitivePackagesFilterForDeprecated =
             async p => await p.ResolvedPackageMetadata.GetDeprecationMetadataAsync() != null;
 
+        internal static readonly Func<InstalledPackageReference, Task<bool>> TopLevelPackagesFilterForVulnerable =
+            p => Task.FromResult(p.ResolvedPackageMetadata.Vulnerabilities != null);
+        internal static readonly Func<InstalledPackageReference, Task<bool>> TransitivePackagesFilterForVulnerable =
+            p => Task.FromResult(p.ResolvedPackageMetadata.Vulnerabilities != null);
+
         public async Task ExecuteCommandAsync(ListPackageArgs listPackageArgs)
         {
             if (!File.Exists(listPackageArgs.Path))
@@ -55,6 +60,7 @@ namespace NuGet.CommandLine.XPlat
 
             var autoReferenceFound = false;
             var deprecatedFound = false;
+            var vulnerableFound = false;
 
             var msBuild = new MSBuildAPIUtility(listPackageArgs.Logger);
 
@@ -138,7 +144,7 @@ namespace NuGet.CommandLine.XPlat
                                 // Handle --deprecated
                                 else if (listPackageArgs.IncludeDeprecated)
                                 {
-                                    await GetDeprecationInfoAsync(packages, listPackageArgs);
+                                    await GetPackageMetadataAsync(packages, listPackageArgs);
 
                                     printPackages = await FilterDeprecatedPackagesAsync(packages);
 
@@ -147,6 +153,20 @@ namespace NuGet.CommandLine.XPlat
                                     if (!printPackages)
                                     {
                                         Console.WriteLine(string.Format(Strings.ListPkg_NoDeprecatedPackagesForProject, projectName));
+                                    }
+                                }
+                                // Handle --vulnerable
+                                else if (listPackageArgs.IncludeVulnerable)
+                                {
+                                    await GetPackageMetadataAsync(packages, listPackageArgs);
+
+                                    printPackages = await FilterVulnerablePackagesAsync(packages);
+
+                                    // If after filtering, no packages were found to be deprecated, inform the user
+                                    // and do not print anything
+                                    if (!printPackages)
+                                    {
+                                        Console.WriteLine(string.Format(Strings.ListPkg_NoVulnerablePackagesForProject, projectName));
                                     }
                                 }
 
@@ -159,10 +179,12 @@ namespace NuGet.CommandLine.XPlat
                                         projectName,
                                         listPackageArgs.IncludeTransitive,
                                         listPackageArgs.IncludeOutdated,
-                                        listPackageArgs.IncludeDeprecated);
+                                        listPackageArgs.IncludeDeprecated,
+                                        listPackageArgs.IncludeVulnerable);
 
                                     autoReferenceFound = autoReferenceFound || printPackagesResult.AutoReferenceFound;
                                     deprecatedFound = deprecatedFound || printPackagesResult.DeprecatedFound;
+                                    vulnerableFound = vulnerableFound || printPackagesResult.VulnerableFound;
                                 }
                             }
                         }
@@ -208,6 +230,16 @@ namespace NuGet.CommandLine.XPlat
                 packages,
                 TopLevelPackagesFilterForDeprecated,
                 TransitivePackagesFilterForDeprecated);
+
+            return packages.Any(p => p.TopLevelPackages.Any());
+        }
+
+        private static async Task<bool> FilterVulnerablePackagesAsync(IEnumerable<FrameworkPackages> packages)
+        {
+            await FilterPackagesAsync(
+                packages,
+                TopLevelPackagesFilterForVulnerable,
+                TransitivePackagesFilterForVulnerable);
 
             return packages.Any(p => p.TopLevelPackages.Any());
         }
@@ -289,7 +321,7 @@ namespace NuGet.CommandLine.XPlat
         /// </summary>
         /// <param name="packages">The packages found in a project.</param>
         /// <param name="listPackageArgs">List args for the token and source provider</param>
-        private async Task GetDeprecationInfoAsync(
+        private async Task GetPackageMetadataAsync(
             IEnumerable<FrameworkPackages> packages,
             ListPackageArgs listPackageArgs)
         {
@@ -467,7 +499,9 @@ namespace NuGet.CommandLine.XPlat
 
                     // Update resolved version with deprecated information returned by the server.
                     var resolvedVersionFromServer = matchingPackagesWithDeprecationMetadata
-                        .Where(v => v.SearchMetadata.Identity.Version == topLevelPackage.ResolvedPackageMetadata.Identity.Version && v.DeprecationMetadata != null)
+                        .Where(v => v.SearchMetadata.Identity.Version == topLevelPackage.ResolvedPackageMetadata.Identity.Version &&
+                              (listPackageArgs.IncludeDeprecated && v.DeprecationMetadata != null ||
+                               listPackageArgs.IncludeVulnerable && v.SearchMetadata?.Vulnerabilities != null))
                         .FirstOrDefault();
 
                     if (resolvedVersionFromServer != null)
@@ -493,7 +527,9 @@ namespace NuGet.CommandLine.XPlat
 
                     // Update resolved version with deprecated information returned by the server.
                     var resolvedVersionFromServer = matchingPackagesWithDeprecationMetadata
-                        .Where(v => v.SearchMetadata.Identity.Version == transitivePackage.ResolvedPackageMetadata.Identity.Version && v.DeprecationMetadata != null)
+                        .Where(v => v.SearchMetadata.Identity.Version == transitivePackage.ResolvedPackageMetadata.Identity.Version &&
+                              (listPackageArgs.IncludeDeprecated && v.DeprecationMetadata != null ||
+                               listPackageArgs.IncludeVulnerable && v.SearchMetadata?.Vulnerabilities != null))
                         .FirstOrDefault();
 
                     if (resolvedVersionFromServer != null)
