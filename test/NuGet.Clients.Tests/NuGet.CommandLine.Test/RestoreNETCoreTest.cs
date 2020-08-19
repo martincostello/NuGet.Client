@@ -10038,7 +10038,6 @@ namespace NuGet.CommandLine.Test
                 solution.Projects.Add(project);
                 solution.Create(pathContext.SolutionRoot);
 
-
                 await SimpleTestPackageUtility.CreateFolderFeedV3Async(
                     pathContext.PackageSource,
                     PackageSaveMode.Defaultv3,
