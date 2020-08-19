@@ -4,6 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft;
+using Microsoft.ServiceHub.Framework;
+using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.Utilities;
 using NuGet.Configuration;
 using NuGet.PackageManagement.VisualStudio;
@@ -18,8 +23,10 @@ using NuGet.VisualStudio.Internal.Contracts;
 namespace NuGet.PackageManagement.UI
 {
     [Export(typeof(INuGetUIFactory))]
-    internal sealed class NuGetUIFactory : INuGetUIFactory
+    internal sealed class NuGetUIFactory : INuGetUIFactory, IDisposable
     {
+        private AsyncLazy<INuGetSolutionManagerService> _solutionManagerService;
+
         [Import]
         private ICommonOperations CommonOperations { get; set; }
 
@@ -66,14 +73,42 @@ namespace NuGet.PackageManagement.UI
                 commonOperations,
                 logger,
                 sourceControlManagerProvider);
+
+            _solutionManagerService = new AsyncLazy<INuGetSolutionManagerService>(
+                async () =>
+                {
+                    IServiceBroker serviceBroker = await BrokeredServicesUtilities.GetRemoteServiceBrokerAsync();
+
+#pragma warning disable ISB001 // Dispose of proxies
+                    INuGetSolutionManagerService solutionManagerService = await serviceBroker.GetProxyAsync<INuGetSolutionManagerService>(
+                        NuGetServices.SolutionManagerService, CancellationToken.None);
+#pragma warning restore ISB001 // Dispose of proxies
+
+                    Assumes.NotNull(solutionManagerService);
+
+                    return solutionManagerService;
+                },
+                NuGetUIThreadHelper.JoinableTaskFactory);
+        }
+
+        public void Dispose()
+        {
+            if (_solutionManagerService.IsValueCreated)
+            {
+                _solutionManagerService.GetValue()?.Dispose();
+            }
+
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// Returns the UI for the project or given set of projects.
         /// </summary>
-        public INuGetUI Create(params IProjectContextInfo[] projects)
+        public async ValueTask<INuGetUI> CreateAsync(params IProjectContextInfo[] projects)
         {
-            var uiContext = CreateUIContext(projects);
+            INuGetSolutionManagerService solutionManagerService = await _solutionManagerService.GetValueAsync();
+
+            var uiContext = CreateUIContext(solutionManagerService, projects);
 
             var adapterLogger = new LoggerAdapter(ProjectContext);
             ProjectContext.PackageExtractionContext = new PackageExtractionContext(
@@ -85,7 +120,9 @@ namespace NuGet.PackageManagement.UI
             return new NuGetUI(CommonOperations, ProjectContext, uiContext, OutputConsoleLogger);
         }
 
-        private INuGetUIContext CreateUIContext(params IProjectContextInfo[] projects)
+        private INuGetUIContext CreateUIContext(
+            INuGetSolutionManagerService solutionManagerService,
+            params IProjectContextInfo[] projects)
         {
             var packageManager = new NuGetPackageManager(
                 SourceRepositoryProvider.Value,
@@ -106,6 +143,7 @@ namespace NuGet.PackageManagement.UI
             var context = new NuGetUIContext(
                 SourceRepositoryProvider.Value,
                 SolutionManager,
+                solutionManagerService,
                 packageManager,
                 actionEngine,
                 PackageRestoreManager.Value,

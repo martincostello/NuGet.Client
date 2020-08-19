@@ -19,7 +19,7 @@ namespace NuGet.PackageManagement.UI
     /// The NuGet package management UI
     /// </summary>
     /// <remarks>This is not expected to be thread safe.</remarks>
-    public interface INuGetUI
+    public interface INuGetUI : IDisposable
     {
         bool PromptForPackageManagementFormat(PackageManagementFormat selectedFormat);
 

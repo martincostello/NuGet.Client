@@ -406,15 +406,7 @@ namespace NuGet.PackageManagement.UI
                     {
                         await projectManagerService.ExecuteActionsAsync(actions, cancellationToken);
 
-                        // fires ActionsExecuted event to update the UI
-                        IReadOnlyCollection<string> projectIds = actions.Select(action => action.ProjectId)
-                            .Distinct()
-                            .ToArray();
-
-                        if (uiService is NuGetUI nuGetUi)
-                        {
-                            nuGetUi.OnActionsExecuted(projectIds);
-                        }
+                        uiService.UIContext.FireProjectActionsExecuted(actions);
                     }
                     else
                     {

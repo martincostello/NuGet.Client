@@ -22,9 +22,12 @@ namespace NuGet.PackageManagement.UI
     {
         private IProjectContextInfo[] _projects;
 
+        public event EventHandler<IReadOnlyCollection<ProjectAction>> ProjectActionsExecuted;
+
         public NuGetUIContext(
             ISourceRepositoryProvider sourceProvider,
             IVsSolutionManager solutionManager,
+            INuGetSolutionManagerService solutionManagerService,
             NuGetPackageManager packageManager,
             UIActionEngine uiActionEngine,
             IPackageRestoreManager packageRestoreManager,
@@ -34,6 +37,7 @@ namespace NuGet.PackageManagement.UI
         {
             SourceProvider = sourceProvider;
             SolutionManager = solutionManager;
+            SolutionManagerService = solutionManagerService;
             PackageManager = packageManager;
             UIActionEngine = uiActionEngine;
             PackageManager = packageManager;
@@ -46,6 +50,8 @@ namespace NuGet.PackageManagement.UI
         public ISourceRepositoryProvider SourceProvider { get; }
 
         public IVsSolutionManager SolutionManager { get; }
+
+        public INuGetSolutionManagerService SolutionManagerService { get; }
 
         public NuGetPackageManager PackageManager { get; }
 
@@ -92,6 +98,18 @@ namespace NuGet.PackageManagement.UI
                 initialData.TotalSteps);
             var session = waitForDialogFactory.StartWaitDialog(caption, progressData);
             return new VisualStudioProgressDialogSession(session);
+        }
+
+        public void FireProjectActionsExecuted(IReadOnlyCollection<ProjectAction> projectActions)
+        {
+            ProjectActionsExecuted?.Invoke(this, projectActions);
+        }
+
+        public void Dispose()
+        {
+            SolutionManagerService.Dispose();
+
+            GC.SuppressFinalize(this);
         }
     }
 }

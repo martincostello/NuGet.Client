@@ -72,6 +72,7 @@ namespace NuGetVSExtension
     [FontAndColorsRegistration("Package Manager Console", NuGetConsole.GuidList.GuidPackageManagerConsoleFontAndColorCategoryString, "{" + GuidList.guidNuGetPkgString + "}")]
     [ProvideBrokeredService(ContractsNuGetServices.NuGetProjectServiceName, ContractsNuGetServices.Version1, Audience = ServiceAudience.AllClientsIncludingGuests)]
     [ProvideBrokeredService(BrokeredServicesUtilities.SourceProviderServiceName, BrokeredServicesUtilities.SourceProviderServiceVersion, Audience = ServiceAudience.AllClientsIncludingGuests)]
+    [ProvideBrokeredService(BrokeredServicesUtilities.SolutionManagerServiceName, BrokeredServicesUtilities.SolutionManagerServiceVersion, Audience = ServiceAudience.AllClientsIncludingGuests)]
     [ProvideBrokeredService(BrokeredServicesUtilities.ProjectManagerServiceName, BrokeredServicesUtilities.ProjectManagerServiceVersion, Audience = ServiceAudience.AllClientsIncludingGuests)]
     [Guid(GuidList.guidNuGetPkgString)]
     public sealed class NuGetPackage : AsyncPackage, IVsPackageExtensionProvider, IVsPersistSolutionOpts
@@ -178,7 +179,9 @@ namespace NuGetVSExtension
             var lazySettings = new AsyncLazy<ISettings>(() => ServiceLocator.GetInstanceAsync<ISettings>(), ThreadHelper.JoinableTaskFactory);
             var nuGetBrokeredServiceFactory = new NuGetBrokeredServiceFactory(lazySolutionManager, lazySettings);
             brokeredServiceContainer.Proffer(ContractsNuGetServices.NuGetProjectServiceV1, nuGetBrokeredServiceFactory.CreateNuGetProjectServiceV1);
+
             brokeredServiceContainer.Proffer(NuGetServices.SourceProviderService, (mk, options, sb, ac, ct) => new ValueTask<object>(new NuGetSourcesService(options, sb, ac)));
+            brokeredServiceContainer.Proffer(NuGetServices.SolutionManagerService, (mk, options, sb, ac, ct) => ToValueTaskOfObject(NuGetSolutionManagerService.CreateAsync(options, sb, ac, ct)));
             brokeredServiceContainer.Proffer(NuGetServices.ProjectManagerService, (mk, options, sb, ac, ct) => new ValueTask<object>(new NuGetProjectManagerService(options, sb, ac)));
         }
 
@@ -477,7 +480,7 @@ namespace NuGetVSExtension
             _ = await nugetProject.GetInstalledPackagesAsync(CancellationToken.None);
 
             var contextInfo = await ProjectContextInfo.CreateAsync(nugetProject, CancellationToken.None);
-            var uiController = UIFactory.Value.Create(contextInfo);
+            var uiController = await UIFactory.Value.CreateAsync(contextInfo);
 
             var model = new PackageManagerModel(
                 uiController,
@@ -575,7 +578,7 @@ namespace NuGetVSExtension
 
             var nuGetProject = await SolutionManager.Value.GetNuGetProjectAsync(uniqueName);
             var projectContextInfo = await ProjectContextInfo.CreateAsync(nuGetProject, CancellationToken.None);
-            var uiController = UIFactory.Value.Create(projectContextInfo);
+            var uiController = await UIFactory.Value.CreateAsync(projectContextInfo);
             await uiController.UIContext.UIActionEngine.UpgradeNuGetProjectAsync(uiController, nuGetProject);
             uiController.UIContext.UserSettingsManager.PersistSettings();
         }
@@ -711,7 +714,7 @@ namespace NuGetVSExtension
                 }
             }
 
-            var uiController = UIFactory.Value.Create(projectContexts.ToArray());
+            var uiController = await UIFactory.Value.CreateAsync(projectContexts.ToArray());
             var solutionName = (string)_dte.Solution.Properties.Item("Name").Value;
 
             var model = new PackageManagerModel(
@@ -1130,5 +1133,12 @@ namespace NuGetVSExtension
         }
 
         #endregion IVsPersistSolutionOpts
+
+        private static async ValueTask<object> ToValueTaskOfObject<T>(ValueTask<T> valueTask)
+        {
+            T value = await valueTask;
+
+            return (object)value;
+        }
     }
 }

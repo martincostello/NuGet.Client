@@ -143,18 +143,14 @@ namespace NuGet.PackageManagement.UI
                 controller.PackageManagerControl = this;
             }
 
-            var solutionManager = Model.Context.SolutionManager;
-            solutionManager.NuGetProjectAdded += SolutionManager_ProjectsChanged;
-            solutionManager.NuGetProjectRemoved += SolutionManager_ProjectsChanged;
-            solutionManager.NuGetProjectUpdated += SolutionManager_ProjectsUpdated;
-            solutionManager.NuGetProjectRenamed += SolutionManager_ProjectRenamed;
-            solutionManager.ActionsExecuted += SolutionManager_ActionsExecuted;
-            solutionManager.AfterNuGetCacheUpdated += SolutionManager_CacheUpdated;
+            var solutionManager = Model.Context.SolutionManagerService;
+            solutionManager.ProjectAdded += OnProjectChanged;
+            solutionManager.ProjectRemoved += OnProjectChanged;
+            solutionManager.ProjectUpdated += OnProjectUpdated;
+            solutionManager.ProjectRenamed += OnProjectRenamed;
+            //solutionManager.AfterNuGetCacheUpdated += SolutionManager_CacheUpdated;
 
-            if (Model.UIController is NuGetUI nuGetUi)
-            {
-                nuGetUi.ActionsExecuted += OnActionsExecuted;
-            }
+            Model.Context.ProjectActionsExecuted += OnProjectActionsExecuted;
 
             Model.Context.SourceProvider.PackageSourceProvider.PackageSourcesChanged += Sources_PackageSourcesChanged;
 
@@ -199,39 +195,37 @@ namespace NuGet.PackageManagement.UI
 
         public bool IncludePrerelease => _topPanel.CheckboxPrerelease.IsChecked == true;
 
-        private void SolutionManager_ProjectsUpdated(object sender, NuGetProjectEventArgs e)
+        private void OnProjectUpdated(object sender, IProjectContextInfo project)
         {
             Model.Context.Projects = _detailModel.NuGetProjects;
         }
 
-        private void SolutionManager_ProjectRenamed(object sender, NuGetProjectEventArgs e)
+        private void OnProjectRenamed(object sender, IProjectContextInfo project)
         {
-            SolutionManager_ProjectsChanged(sender, e);
+            OnProjectChanged(sender, project);
             if (!Model.IsSolution)
             {
-                NuGetUIThreadHelper.JoinableTaskFactory.RunAsync(() => SolutionManager_ProjectRenamedAsync(e.NuGetProject))
-                    .PostOnFailure(nameof(PackageManagerControl), nameof(SolutionManager_ProjectRenamed));
+                NuGetUIThreadHelper.JoinableTaskFactory.RunAsync(() => SolutionManager_ProjectRenamedAsync(project))
+                    .PostOnFailure(nameof(PackageManagerControl), nameof(OnProjectRenamed));
             }
         }
 
-        private async Task SolutionManager_ProjectRenamedAsync(NuGetProject nugetProject)
+        private async Task SolutionManager_ProjectRenamedAsync(IProjectContextInfo project)
         {
-            var projectContextInfo = await ProjectContextInfo.CreateAsync(nugetProject, CancellationToken.None);
-            Model.Context.Projects = new[] { projectContextInfo };
+            Model.Context.Projects = new[] { project };
 
             var currentNugetProject = Model.Context.Projects.First();
-            string newFullPath;
 
-            (bool _, string currentFullPath) = await currentNugetProject.TryGetMetadataAsync<string>(NuGetProjectMetadataKeys.FullPath, CancellationToken.None);
-            nugetProject.TryGetMetadata(NuGetProjectMetadataKeys.FullPath, out newFullPath);
+            (bool currentSuccess, string currentFullPath) = await currentNugetProject.TryGetMetadataAsync<string>(NuGetProjectMetadataKeys.FullPath, CancellationToken.None);
+            (bool newSuccess, string newFullPath) = await project.TryGetMetadataAsync<string>(NuGetProjectMetadataKeys.FullPath, CancellationToken.None);
 
-            if (currentFullPath == newFullPath)
+            if (currentSuccess && newSuccess && currentFullPath == newFullPath)
             {
                 await SetTitleAsync();
             }
         }
 
-        private void SolutionManager_ProjectsChanged(object sender, NuGetProjectEventArgs e)
+        private void OnProjectChanged(object sender, IProjectContextInfo project)
         {
             var timeSpan = GetTimeSinceLastRefreshAndRestart();
 
@@ -256,7 +250,7 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        private void SolutionManager_ActionsExecuted(object sender, ActionsExecutedEventArgs e)
+        private void OnProjectActionsExecuted(object sender, IReadOnlyCollection<ProjectAction> actions)
         {
             var timeSpan = GetTimeSinceLastRefreshAndRestart();
             // Do not refresh if the UI is not visible. It will be refreshed later when the loaded event is called.
@@ -268,49 +262,14 @@ namespace NuGet.PackageManagement.UI
                 }
                 else
                 {
-                    RefreshProjectAfterAction(timeSpan, e);
-                }
-            }
-            else
-            {
-                EmitRefreshEvent(timeSpan, RefreshOperationSource.ActionsExecuted, RefreshOperationStatus.NoOp);
-            }
-        }
+                    string[] projectIds = actions.Select(action => action.ProjectId).ToArray();
 
-        private void OnActionsExecuted(object sender, IReadOnlyCollection<string> projectIds)
-        {
-            var timeSpan = GetTimeSinceLastRefreshAndRestart();
-            // Do not refresh if the UI is not visible. It will be refreshed later when the loaded event is called.
-            if (IsVisible)
-            {
-                if (Model.IsSolution)
-                {
-                    RefreshWhenNotExecutingAction(RefreshOperationSource.ActionsExecuted, timeSpan);
-                }
-                else
-                {
                     RefreshProjectAfterAction(timeSpan, projectIds);
                 }
             }
             else
             {
                 EmitRefreshEvent(timeSpan, RefreshOperationSource.ActionsExecuted, RefreshOperationStatus.NoOp);
-            }
-        }
-
-        private void RefreshProjectAfterAction(TimeSpan timeSpan, ActionsExecutedEventArgs e)
-        {
-            // this is a project package manager, so there is one and only one project.
-            var project = Model.Context.Projects.First();
-
-            if (e.Actions.Any(action =>
-                action.Project.GetMetadataOrNull(NuGetProjectMetadataKeys.ProjectId) as string == project.ProjectId))
-            {
-                RefreshWhenNotExecutingAction(RefreshOperationSource.ActionsExecuted, timeSpan);
-            }
-            else
-            {
-                EmitRefreshEvent(timeSpan, RefreshOperationSource.ActionsExecuted, RefreshOperationStatus.NotApplicable);
             }
         }
 
@@ -1423,20 +1382,17 @@ namespace NuGet.PackageManagement.UI
             RemoveRestoreBar();
             RemoveRestartBar();
 
-            var solutionManager = Model.Context.SolutionManager;
-            solutionManager.NuGetProjectAdded -= SolutionManager_ProjectsChanged;
-            solutionManager.NuGetProjectRemoved -= SolutionManager_ProjectsChanged;
-            solutionManager.NuGetProjectUpdated -= SolutionManager_ProjectsUpdated;
-            solutionManager.NuGetProjectRenamed -= SolutionManager_ProjectRenamed;
-            solutionManager.ActionsExecuted -= SolutionManager_ActionsExecuted;
-            solutionManager.AfterNuGetCacheUpdated -= SolutionManager_CacheUpdated;
-
-            if (Model.UIController is NuGetUI nuGetUi)
-            {
-                nuGetUi.ActionsExecuted -= OnActionsExecuted;
-            }
+            INuGetSolutionManagerService solutionManager = Model.Context.SolutionManagerService;
+            solutionManager.ProjectAdded -= OnProjectChanged;
+            solutionManager.ProjectRemoved -= OnProjectChanged;
+            solutionManager.ProjectUpdated -= OnProjectUpdated;
+            solutionManager.ProjectRenamed -= OnProjectRenamed;
+            Model.Context.ProjectActionsExecuted -= OnProjectActionsExecuted;
+            //solutionManager.AfterNuGetCacheUpdated -= SolutionManager_CacheUpdated;
 
             Model.Context.SourceProvider.PackageSourceProvider.PackageSourcesChanged -= Sources_PackageSourcesChanged;
+
+            Model.UIController.Dispose();
 
             // make sure to cancel currently running load or refresh tasks
             _loadCts?.Cancel();

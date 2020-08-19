@@ -10,7 +10,7 @@ namespace NuGet.SolutionRestoreManager
 {
     internal static class BrokeredServicesUtility
     {
-        // It is very important that these names and versions are kept the same as the ones in NuGet.VisualStudio.Internal.Contracts.NuGetServices.
+        // These service names and versions must be kept in sync with those in NuGet.VisualStudio.Internal.Contracts.NuGetServices.
         internal const string SolutionServiceName = "Microsoft.VisualStudio.NuGet.SolutionService";
         internal const string SolutionServiceVersion = "1.0.0";
 

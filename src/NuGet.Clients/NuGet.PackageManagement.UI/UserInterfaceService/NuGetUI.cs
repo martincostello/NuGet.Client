@@ -248,13 +248,6 @@ namespace NuGet.PackageManagement.UI
             UIContext.SolutionManager.OnActionsExecuted(actions);
         }
 
-        internal event EventHandler<IReadOnlyCollection<string>> ActionsExecuted;
-
-        internal void OnActionsExecuted(IReadOnlyCollection<string> projectIds)
-        {
-            ActionsExecuted?.Invoke(this, projectIds);
-        }
-
         public IEnumerable<SourceRepository> ActiveSources
         {
             get
@@ -353,6 +346,13 @@ namespace NuGet.PackageManagement.UI
 
                 UILogger.ReportError(new LogMessage(LogLevel.Error, ExceptionUtilities.DisplayMessage(ex, indent: false)));
             }
+        }
+
+        public void Dispose()
+        {
+            UIContext.Dispose();
+
+            GC.SuppressFinalize(this);
         }
 
         private void ProcessSignatureIssues(SignatureException ex)
