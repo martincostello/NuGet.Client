@@ -195,7 +195,7 @@ jobs:
     inputs:
       scriptType: "inlineScript"
       inlineScript: |
-        dotnet tool run dotnet-format.exe --check --exclude submodules
+        dotnet-format.exe --check --exclude submodules
 
   - task: MSBuild@1
     displayName: "Restore for VS2019"
