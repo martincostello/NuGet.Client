@@ -1594,8 +1594,6 @@ namespace NuGet.CommandLine.Test
                     "net46",
                     "net45");
 
-                project.OriginalFrameworkStrings = new List<string> { "net46", "net45" };
-
                 project.AddPackageToAllFrameworks(packageX);
                 solution.Projects.Add(project);
                 solution.Create(pathContext.SolutionRoot);
@@ -10032,7 +10030,14 @@ namespace NuGet.CommandLine.Test
                     "net5.0-windows",
                     "net50");
 
-                project.OriginalFrameworkStrings = new List<string> { "net5.0-windows", "net50" };
+                // Workaround: Set all the TFM properties ourselves.
+                // We can't rely on the SDK setting them, as only .NET 5 SDK P8 and later applies these correctly.
+                var net50windowsTFM = project.Frameworks.Where(f => f.TargetAlias.Equals("net5.0-windows")).Single();
+                var net50TFM = project.Frameworks.Where(f => f.TargetAlias.Equals("net50")).Single();
+                net50windowsTFM.Properties.Add("TargetFrameworkMoniker", ".NETCoreApp, Version=v5.0");
+                net50windowsTFM.Properties.Add("TargetPlatformMoniker", "Windows, Version=7.0");
+                net50TFM.Properties.Add("TargetFrameworkMoniker", ".NETCoreApp, Version=v5.0");
+                net50TFM.Properties.Add("TargetPlatformMoniker", " ,Version= ");
 
                 project.AddPackageToAllFrameworks(packageX);
                 solution.Projects.Add(project);
@@ -10051,8 +10056,8 @@ namespace NuGet.CommandLine.Test
 
                 var propsItemGroups = propsXML.Root.Elements().Where(e => e.Name.LocalName == "ItemGroup").ToList();
 
-                Assert.Contains("'$(TargetFramework)' == 'net50' AND '$(ExcludeRestorePackageImports)' != 'true'", propsItemGroups[1].Attribute(XName.Get("Condition")).Value.Trim());
-                Assert.Contains("'$(TargetFramework)' == 'net5.0-windows' AND '$(ExcludeRestorePackageImports)' != 'true'", propsItemGroups[2].Attribute(XName.Get("Condition")).Value.Trim());
+                Assert.Contains("'$(TargetFramework)' == 'net5.0-windows' AND '$(ExcludeRestorePackageImports)' != 'true'", propsItemGroups[1].Attribute(XName.Get("Condition")).Value.Trim());
+                Assert.Contains("'$(TargetFramework)' == 'net50' AND '$(ExcludeRestorePackageImports)' != 'true'", propsItemGroups[2].Attribute(XName.Get("Condition")).Value.Trim());
             }
         }
 

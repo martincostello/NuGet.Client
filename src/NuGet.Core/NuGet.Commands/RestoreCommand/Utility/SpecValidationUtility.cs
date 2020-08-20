@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using NuGet.Frameworks;
 using NuGet.LibraryModel;
 using NuGet.ProjectModel;
 
@@ -161,7 +162,8 @@ namespace NuGet.Commands
             }
 
             // Duplicate frameworks may not exist
-            if (frameworks.Length != frameworks.Distinct().Count())
+            // Change in ATF should *not* affect our duplicate check, so we use the full framework comparer.
+            if (frameworks.Length != frameworks.Distinct(new NuGetFrameworkFullComparer()).Count())
             {
                 var message = string.Format(
                     CultureInfo.CurrentCulture,
