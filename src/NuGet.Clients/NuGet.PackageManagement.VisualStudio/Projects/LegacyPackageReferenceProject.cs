@@ -440,7 +440,7 @@ namespace NuGet.PackageManagement.VisualStudio
                     ProjectName = projectName,
                     ProjectUniqueName = _projectFullPath,
                     OriginalTargetFrameworks = tfis
-                        .Select(tfi => tfi.FrameworkName.GetShortFolderName())
+                        .Select(tfi => tfi.FrameworkName.GetShortFolderName()) // TODO NK - ensure no-op works correctly. Why haven't the vendors caught this?
                         .ToList(),
                     TargetFrameworks = new List<ProjectRestoreMetadataFrameworkInfo>
                     {

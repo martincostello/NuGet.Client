@@ -8,7 +8,6 @@ using NuGet.Frameworks;
 using NuGet.LibraryModel;
 using NuGet.ProjectModel;
 using NuGet.Versioning;
-using Test.Utility;
 using Xunit;
 using static NuGet.Frameworks.FrameworkConstants;
 

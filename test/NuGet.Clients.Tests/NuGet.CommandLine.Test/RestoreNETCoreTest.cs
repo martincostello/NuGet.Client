@@ -10008,7 +10008,7 @@ namespace NuGet.CommandLine.Test
         }
 
         [PlatformFact(Platform.Windows)]
-        public async Task RestoreNetCore_WithCustomAliasAndPackageWithTargets_WritesConditionWithCorrectAlias()
+        public async Task RestoreNetCore_WithCustomAliases_WritesConditionWithCorrectAlias()
         {
             // Arrange
             using (var pathContext = new SimpleTestPathContext())

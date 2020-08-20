@@ -2644,12 +2644,13 @@ namespace NuGet.PackageManagement
                 await MSBuildRestoreUtility.ReplayWarningsAndErrorsAsync(restoreResult.Result.LockFile?.LogMessages, logger);
             }
 
-            // Build the installation context
+            // Build the installation context - TODO NK - align them correctly.
             var originalFrameworks = updatedPackageSpec
                 .RestoreMetadata
                 .OriginalTargetFrameworks
                 .GroupBy(x => NuGetFramework.Parse(x))
                 .ToDictionary(x => x.Key, x => x.First());
+
             var installationContext = new BuildIntegratedInstallationContext(
                 successfulFrameworks,
                 unsuccessfulFrameworks,

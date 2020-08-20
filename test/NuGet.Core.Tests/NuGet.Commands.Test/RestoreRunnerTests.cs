@@ -250,7 +250,7 @@ namespace NuGet.Commands.Test
                     ProjectPath = Path.Combine(project1.FullName, "project1.csproj")
                 };
                 spec1.RestoreMetadata.ProjectUniqueName = spec1.RestoreMetadata.ProjectPath;
-                spec1.RestoreMetadata.TargetFrameworks.Add(new ProjectRestoreMetadataFrameworkInfo(NuGetFramework.Parse("net45")));
+                spec1.RestoreMetadata.TargetFrameworks.Add(new ProjectRestoreMetadataFrameworkInfo(NuGetFramework.Parse("net45")) { TargetAlias = "net45" });
                 spec1.RestoreMetadata.OriginalTargetFrameworks.Add("net45");
                 spec1.FilePath = spec1.RestoreMetadata.ProjectPath;
 
@@ -408,6 +408,7 @@ namespace NuGet.Commands.Test
                     ProjectStyle = ProjectStyle.PackageReference
                 }
             };
+            // TODO NK - conitnue here
             spec1.RestoreMetadata.OriginalTargetFrameworks.Add("net45");
 
             var spec2 = new PackageSpec(frameworks2)

@@ -214,6 +214,19 @@ namespace NuGet.Commands
 
                 throw RestoreSpecException.Create(message, files);
             }
+
+            //Original TargetFrameworks must match the aliases. TODO NK 
+
+            if (spec.RestoreMetadata.OriginalTargetFrameworks.Count < 1)
+            {
+                var message = string.Format(
+                    CultureInfo.CurrentCulture,
+                    Strings.MissingRequiredPropertyForProjectType,
+                    nameof(spec.RestoreMetadata.OriginalTargetFrameworks),
+                    ProjectStyle.PackageReference.ToString());
+
+                throw RestoreSpecException.Create(message, files);
+            }
         }
 
         private static void ValidateProjectSpecUAP(PackageSpec spec, IEnumerable<string> files)
