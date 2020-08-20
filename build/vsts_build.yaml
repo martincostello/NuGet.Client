@@ -188,14 +188,14 @@ jobs:
     inputs:
       scriptType: "inlineScript"
       inlineScript: |
-        (dotnet tool install --global dotnet-format) -or (dotnet tool update --global dotnet-format)
+        (dotnet tool install --tool-path $(System.DefaultWorkingDirectory) dotnet-format) -or (dotnet tool update --tool-path $(System.DefaultWorkingDirectory) dotnet-format)
 
   - task: PowerShell@1
     displayName: "Check source file format"
     inputs:
       scriptType: "inlineScript"
       inlineScript: |
-        dotnet format --check --exclude submodules --verbosity diagnostic
+        $(System.DefaultWorkingDirectory)\dotnet-format --check --exclude submodules --verbosity diagnostic
 
   - task: MSBuild@1
     displayName: "Restore for VS2019"
