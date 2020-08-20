@@ -188,7 +188,7 @@ jobs:
     inputs:
       scriptType: "inlineScript"
       inlineScript: |
-        dotnet tool update --global dotnet-format
+        dotnet tool install --global dotnet-format || dotnet tool update --global dotnet-format
 
   - task: PowerShell@1
     displayName: "Check source file format"
