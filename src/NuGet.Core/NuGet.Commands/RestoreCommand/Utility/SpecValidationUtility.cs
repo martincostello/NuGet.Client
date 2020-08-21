@@ -219,7 +219,7 @@ namespace NuGet.Commands
             //OriginalTargetFrameworks must match the aliases.
             if (spec.RestoreMetadata.TargetFrameworks.Count > 1)
             {
-                var aliases = spec.RestoreMetadata.TargetFrameworks.Select(e => e.TargetAlias);
+                var aliases = spec.TargetFrameworks.Select(e => e.TargetAlias);
 
                 if (!EqualityUtility.OrderedEquals(aliases, spec.RestoreMetadata.OriginalTargetFrameworks, e => e, StringComparer.OrdinalIgnoreCase, StringComparer.OrdinalIgnoreCase))
                 {
@@ -232,6 +232,8 @@ namespace NuGet.Commands
                     throw RestoreSpecException.Create(message, files);
                 }
             }
+
+            // Match the aliases for both types of TargetFrameworks
         }
 
         private static void ValidateProjectSpecUAP(PackageSpec spec, IEnumerable<string> files)

@@ -209,8 +209,11 @@ namespace NuGet.CommandLine.XPlat
                     packageReferenceArgs.PackageId,
                     packageReferenceArgs.ProjectPath));
 
-                // TODO NK - fix it here too.
-                var compatibleOriginalFrameworks = originalPackageSpec.RestoreMetadata
+                var compatibleOriginalFrameworks = compatibleFrameworks
+                    .Select(e => GetMatchingFrameworkStrings(originalPackageSpec, e))
+                    .Where(originalFramework => originalFramework != null);
+
+                    originalPackageSpec.RestoreMetadata
                     .OriginalTargetFrameworks
                     .Where(s => compatibleFrameworks.Contains(NuGetFramework.Parse(s)));
 
@@ -226,6 +229,11 @@ namespace NuGet.CommandLine.XPlat
             await RestoreRunner.CommitAsync(restorePreviewResult, CancellationToken.None);
 
             return 0;
+        }
+
+        private static string GetMatchingFrameworkStrings(PackageSpec spec, NuGetFramework framework)
+        {
+            return spec.TargetFrameworks.Where(e => e.FrameworkName.Equals(framework)).FirstOrDefault()?.TargetAlias;
         }
 
         public static async Task<NuGetVersion> GetLatestVersionAsync(PackageSpec originalPackageSpec, string packageId, ILogger logger, bool prerelease)
