@@ -13,7 +13,6 @@ using NuGet.LibraryModel;
 using NuGet.ProjectModel;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
-using NuGet.Shared;
 using NuGet.Test.Utility;
 using Xunit;
 
