@@ -29,7 +29,7 @@ param
 
     [Parameter(Mandatory=$True)]
     [string]$BuildRTM,
-    
+
     [switch]$SkipUpdateBuildNumber
 )
 
@@ -40,13 +40,13 @@ Function Get-Version {
     )
         Write-Host "Evaluating the new VSIX Version : ProductVersion $ProductVersion, build $build"
         # The major version is NuGetMajorVersion + 11, to match VS's number.
-        # The new minor version is: 4.0.0 => 40000, 4.11.5 => 41105. 
-        # This assumes we only get to NuGet major/minor/patch 99 at worst, otherwise the logic breaks. 
+        # The new minor version is: 4.0.0 => 40000, 4.11.5 => 41105.
+        # This assumes we only get to NuGet major/minor/patch 99 at worst, otherwise the logic breaks.
         # The final version for NuGet 4.0.0, build number 3128 would be 15.0.40000.3128
         $versionParts = $ProductVersion -split '\.'
         $major = $($versionParts[0] / 1) + 11
-        $finalVersion = "$major.0.$((-join ($versionParts | %{ '{0:D2}' -f ($_ -as [int]) } )).TrimStart("0")).$build"    
-    
+        $finalVersion = "$major.0.$((-join ($versionParts | %{ '{0:D2}' -f ($_ -as [int]) } )).TrimStart("0")).$build"
+
         Write-Host "The new VSIX Version is: $finalVersion"
         return $finalVersion
 }
@@ -93,7 +93,7 @@ $Submodules = Join-Path $NuGetClientRoot submodules -Resolve
 # NuGet.Build.Localization repository set-up
 $NuGetLocalization = Join-Path $Submodules NuGet.Build.Localization -Resolve
 
-# Check if there is a localization branch associated with this branch repo 
+# Check if there is a localization branch associated with this branch repo
 $currentNuGetBranch = $env:BUILD_SOURCEBRANCHNAME
 $lsRemoteOpts = 'ls-remote', 'origin', $currentNuGetBranch
 Write-Host "Looking for branch '$currentNuGetBranch' in NuGet.Build.Localization"
@@ -116,7 +116,7 @@ Write-Host "git update NuGet.Build.Localization at $NuGetLocalization"
 # Get the commit of the localization repository that will be used for this build.
 $LocalizationRepoCommitHash = & git -C $NuGetLocalization log --pretty=format:'%H' -n 1
 
-if (-not (Test-Path $regKeyFileSystem)) 
+if (-not (Test-Path $regKeyFileSystem))
 {
     Write-Host "Enabling long path support on the build machine"
     Set-ItemProperty -Path $regKeyFileSystem -Name $enableLongPathSupport -Value 1
@@ -142,7 +142,7 @@ if ($BuildRTM -eq 'true')
         $currentBuild = [System.Decimal]::Parse($json.BuildNumber)
         # Set the $(Revision) build variable in VSTS build
         Write-Host "##vso[task.setvariable variable=Revision;]$currentBuild"
-        Write-Host "##vso[build.updatebuildnumber]$currentBuild" 
+        Write-Host "##vso[build.updatebuildnumber]$currentBuild"
         $oldBuildOutputDirectory = Split-Path -Path $BuildInfoJsonFile
         $branchDirectory = Split-Path -Path $oldBuildOutputDirectory
         $newBuildOutputFolder =  Join-Path $branchDirectory $currentBuild
@@ -180,6 +180,7 @@ else
     $CliTargetBranches = & $msbuildExe $env:BUILD_REPOSITORY_LOCALPATH\build\config.props /v:m /nologo /t:GetCliTargetBranches
     $SdkTargetBranches = & $msbuildExe $env:BUILD_REPOSITORY_LOCALPATH\build\config.props /v:m /nologo /t:GetSdkTargetBranches
     $ToolsetTargetBranches = & $msbuildExe $env:BUILD_REPOSITORY_LOCALPATH\build\config.props /v:m /nologo /t:GetToolsetTargetBranches
+    $VSAssemblyVersion = & $msbuildExe $env:BUILD_REPOSITORY_LOCALPATH\build\config.props /v:m /nologo /t:GetVSAssemblyVersion
     Write-Host $VsTargetBranch
     $jsonRepresentation = @{
         BuildNumber = $newBuildCounter
@@ -191,6 +192,7 @@ else
         CliTargetBranches = $CliTargetBranches.Trim()
         SdkTargetBranches = $SdkTargetBranches.Trim()
         ToolsetTargetBranches = $ToolsetTargetBranches.Trim()
+        VSAssemblyVersion = $VSAssemblyVersion.Trim()
     }
 
     # First create the file locally so that we can laster publish it as a build artifact from a local source file instead of a remote source file.

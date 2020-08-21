@@ -78,6 +78,9 @@
   <Target Name="GetSemanticVersion">
     <Message Text="$(SemanticVersion)" Importance="High"/>
   </Target>
+  <Target Name="GetVSAssemblyVersion">
+    <Message Text="$(SemanticVersion).0" Importance="High" />
+  </Target>
   <Target Name="GetVsTargetMajorVersion">
     <Message Text="$(VsTargetMajorVersion)" Importance="High"/>
   </Target>
