@@ -681,18 +681,19 @@ namespace NuGet.XPlat.FuncTest
         }
 
         [Theory]
-        [InlineData("net46", "net46; netcoreapp1.0", ".NETFramework,Version=v4.7.2;NetCoreApp,Version=v1.0", "Windows,Version=7.0;,Version=", "1.0.0")]
+        [InlineData("net46", "net46; netcoreapp1.0", ".NETFramework,Version=v4.7.2;NetCoreApp,Version=v1.0", "Windows,Version=7.0;,Version=", "net46")]
+        [InlineData("netcoreapp2.0", "net46;netcoreapp20;net50", ".NETFramework,Version=v4.6;NetCoreApp,Version=v2.0;NetCoreApp,Version=v5.0", "Windows,Version=7.0;,Version=;,Version=", "netcoreapp20;net50")]
         public async Task AddPkg_ConditionalWithAlias_Success(
             string packageFrameworks,
             string projectFrameworks,
             string projectTargetFrameworkMonikers,
             string projectTargetPlatforMonikers,
-            string userInputVersion)
+            string expectedConditions)
         {
             // Arrange
-
             using (var pathContext = new SimpleTestPathContext())
             {
+                var userInputVersion = "1.0.0";
                 var actualProjectFrameworks = MSBuildStringUtility.Split(projectFrameworks);
                 var actualProjectTargetFrameworkMonikers = MSBuildStringUtility.Split(projectTargetFrameworkMonikers);
                 var actualProjectTargetPlatforMonikers = MSBuildStringUtility.Split(projectTargetPlatforMonikers);
@@ -702,7 +703,7 @@ namespace NuGet.XPlat.FuncTest
                         solutionRoot: pathContext.SolutionRoot,
                         frameworks: MSBuildStringUtility.Split(projectFrameworks));
 
-                for(int i = 0; i < actualProjectFrameworks.Length; i++)
+                for (int i = 0; i < actualProjectFrameworks.Length; i++)
                 {
                     var framework = project.Frameworks.Single(e => e.TargetAlias.Equals(actualProjectFrameworks[i]));
                     framework.Properties.Add("TargetFrameworkMoniker", actualProjectTargetFrameworkMonikers[i]);
@@ -726,18 +727,21 @@ namespace NuGet.XPlat.FuncTest
 
                 var packageArgs = XPlatTestUtils.GetPackageReferenceArgs(packageX.Id, userInputVersion, project);
                 var commandRunner = new AddPackageReferenceCommandRunner();
-                var commonFramework = XPlatTestUtils.GetCommonFramework(packageFrameworks, projectFrameworks);
 
                 // Act
                 var result = commandRunner.ExecuteCommand(packageArgs, MsBuild)
                     .Result;
                 var projectXmlRoot = XPlatTestUtils.LoadCSProj(project.ProjectPath).Root;
-                var itemGroup = XPlatTestUtils.GetItemGroupForFramework(projectXmlRoot, commonFramework);
 
                 // Assert
                 Assert.Equal(0, result);
-                Assert.NotNull(itemGroup);
-                Assert.True(XPlatTestUtils.ValidateReference(itemGroup, packageX.Id, userInputVersion));
+
+                foreach (var framework in MSBuildStringUtility.Split(expectedConditions))
+                {
+                    var itemGroup = XPlatTestUtils.GetItemGroupForFramework(projectXmlRoot, framework);
+                    Assert.NotNull(itemGroup);
+                    Assert.True(XPlatTestUtils.ValidateReference(itemGroup, packageX.Id, userInputVersion));
+                }
             }
         }
 

@@ -6917,6 +6917,195 @@ namespace NuGet.Test
             }
         }
 
+        [Fact]
+        public async Task TestPacMan_MultipleBuildIntegratedProjects_PreviewUpdatePackage2()
+        {
+            // This test was created after a multithreading bug was found. Like most multithreading bugs, it depends
+            // very much on timing of exactly when different threads the relevant parts of the code, so it's difficult
+            // to reproduce in a test.  Therefore, if this test fails randomly, it's not flaky, it's a product bug!
+            // It's very unusual for a test to use Environment.ProcessorCount, but this is why.
+
+            // Arrange
+
+            // Set up Package Source
+            var packages = new List<SourcePackageDependencyInfo>
+            {
+                new SourcePackageDependencyInfo("a", new NuGetVersion(1, 0, 0), new Packaging.Core.PackageDependency[] { }, true, null),
+                new SourcePackageDependencyInfo("a", new NuGetVersion(2, 0, 0), new Packaging.Core.PackageDependency[] { }, true, null)
+            };
+
+            var sourceRepositoryProvider = CreateSource(packages);
+
+            var json = new JObject
+            {
+                ["dependencies"] = new JObject()
+                    {
+                        new JProperty("a", "1.0.0")
+                    },
+                ["frameworks"] = new JObject
+                {
+                    ["net45"] = new JObject()
+                }
+            };
+
+            // Create Package Manager
+            using (var solutionManager = new TestSolutionManager())
+            {
+                var nuGetPackageManager = new NuGetPackageManager(
+                    sourceRepositoryProvider,
+                    NullSettings.Instance,
+                    solutionManager,
+                    new TestDeleteOnRestartManager());
+
+                var projectCount = Environment.ProcessorCount * 2;
+                var projects = new List<NuGetProject>(projectCount);
+                for (int i = 0; i < projectCount; i++)
+                {
+                    var project = solutionManager.AddBuildIntegratedProject(json: json);
+                    projects.Add(project);
+                }
+
+                // Main Act
+                var results = (await nuGetPackageManager.PreviewUpdatePackagesAsync(
+                    "a",
+                    projects,
+                    new ResolutionContext(DependencyBehavior.Lowest, false, false, VersionConstraints.None),
+                    new TestNuGetProjectContext(),
+                    sourceRepositoryProvider.GetRepositories(),
+                    sourceRepositoryProvider.GetRepositories(),
+                    CancellationToken.None)).ToList();
+
+                // Assert
+                Assert.NotEqual(projectCount, results.Count);
+                Assert.All(results,
+                    result =>
+                    {
+                        Assert.Equal(NuGetProjectActionType.Install, result.NuGetProjectActionType);
+                        Assert.Equal(new PackageIdentity("a", new NuGetVersion(2, 0, 0)), result.PackageIdentity);
+                    });
+            }
+        }
+
+        [Fact]
+        public async Task TestPacMan_BuildIntegratedProject_PreviewUpdatePackage2()
+        {
+            // Arrange
+
+            // Set up Package Source
+            var packages = new List<SourcePackageDependencyInfo>
+            {
+                new SourcePackageDependencyInfo("a", new NuGetVersion(1, 0, 0), new Packaging.Core.PackageDependency[] { }, true, null),
+                new SourcePackageDependencyInfo("a", new NuGetVersion(2, 0, 0), new Packaging.Core.PackageDependency[] { }, true, null)
+            };
+
+            var sourceRepositoryProvider = CreateSource(packages);
+
+            var json = new JObject
+            {
+                ["dependencies"] = new JObject()
+                    {
+                        new JProperty("a", "1.0.0")
+                    },
+                ["frameworks"] = new JObject
+                {
+                    ["net45"] = new JObject()
+                }
+            };
+
+            // Create Package Manager
+            using (var solutionManager = new TestSolutionManager())
+            {
+                var nuGetPackageManager = new NuGetPackageManager(
+                    sourceRepositoryProvider,
+                    NullSettings.Instance,
+                    solutionManager,
+                    new TestDeleteOnRestartManager());
+
+                var buildIntegratedProject = solutionManager.AddBuildIntegratedProject(json: json);
+
+                // Main Act
+                var targetPackageId = "a";
+
+                var result = (await nuGetPackageManager.PreviewUpdatePackagesAsync(
+                    targetPackageId,
+                    new List<NuGetProject> { buildIntegratedProject },
+                    new ResolutionContext(DependencyBehavior.Lowest, false, false, VersionConstraints.None),
+                    new TestNuGetProjectContext(),
+                    sourceRepositoryProvider.GetRepositories(),
+                    sourceRepositoryProvider.GetRepositories(),
+                    CancellationToken.None)).ToList();
+
+                // Assert
+                Assert.NotEqual(1, result.Count);
+                Assert.Equal(NuGetProjectActionType.Install, result[0].NuGetProjectActionType);
+                Assert.Equal(new PackageIdentity("a", new NuGetVersion(2, 0, 0)), result[0].PackageIdentity);
+            }
+        }
+
+        [Fact]
+        public async Task TestPacManPreviewInstallPackage_WithGlobalPackageFolder2()
+        {
+            using (
+                var packageSource1 = TestDirectory.Create())
+            {
+                // Arrange
+                var sourceRepositoryProvider1 = TestSourceRepositoryUtility.CreateSourceRepositoryProvider(
+                    new List<Configuration.PackageSource>()
+                    {
+                        new Configuration.PackageSource(packageSource1.Path)
+                    });
+
+                using (var testSolutionManager = new TestSolutionManager())
+                {
+                    var testSettings = NullSettings.Instance;
+                    var token = CancellationToken.None;
+                    var resolutionContext = new ResolutionContext();
+                    var testNuGetProjectContext = new TestNuGetProjectContext();
+                    var deleteOnRestartManager = new TestDeleteOnRestartManager();
+                    var nuGetPackageManager = new NuGetPackageManager(
+                        sourceRepositoryProvider1,
+                        testSettings,
+                        testSolutionManager,
+                        deleteOnRestartManager);
+                    var packagesFolderPath = PackagesFolderPathUtility.GetPackagesFolderPath(testSolutionManager, testSettings);
+                    var projectA = testSolutionManager.AddBuildIntegratedProject();
+
+                    var target = new PackageIdentity("packageA", NuGetVersion.Parse("1.0.0"));
+
+                    var packageAContext = new SimpleTestPackageContext()
+                    {
+                        Id = "packageA",
+                        Version = "1.0.0"
+                    };
+
+                    var saveMode = PackageSaveMode.Nuspec | PackageSaveMode.Files | PackageSaveMode.Nupkg;
+
+                    await SimpleTestPackageUtility.CreateFolderFeedV3Async(
+                        packagesFolderPath,
+                        saveMode,
+                        packageAContext);
+
+                    // ACT
+                    var result = await nuGetPackageManager.PreviewInstallPackageAsync(
+                        projectA,
+                        target,
+                        new ResolutionContext(),
+                        new TestNuGetProjectContext(),
+                        sourceRepositoryProvider1.GetRepositories(),
+                        sourceRepositoryProvider1.GetRepositories(),
+                        token);
+
+                    // Assert
+                    var resulting = result.Select(a => Tuple.Create(a.PackageIdentity, a.NuGetProjectActionType)).ToArray();
+
+                    var expected = new List<Tuple<PackageIdentity, NuGetProjectActionType>>();
+                    Expected(expected, target.Id, target.Version);
+
+                    Assert.False(Compare(resulting, expected));
+                }
+            }
+        }
+
         private void VerifyPreviewActionsTelemetryEvents_PackagesConfig(IEnumerable<string> actual)
         {
             Assert.True(actual.Contains(TelemetryConstants.GatherDependencyStepName));
