@@ -48,7 +48,6 @@ namespace NuGet.PackageManagement.UI
             }
             InstalledVersion = searchResultPackage.InstalledVersion;
             SelectedVersion.IsCurrentInstalled = InstalledVersion == SelectedVersion.Version;
-            OnPropertyChanged(nameof(SelectedVersion));
         }
 
         public override bool IsSolution
@@ -190,7 +189,19 @@ namespace NuGet.PackageManagement.UI
             {
                 _installedVersion = value;
                 OnPropertyChanged(nameof(InstalledVersion));
+                OnPropertyChanged(nameof(IsSelectedVersionInstalled));
             }
+        }
+
+        public override void OnSelectedVersionChanged()
+        {
+            base.OnSelectedVersionChanged();
+            OnPropertyChanged(nameof(IsSelectedVersionInstalled));
+        }
+
+        public bool IsSelectedVersionInstalled
+        {
+            get { return SelectedVersion.Version == InstalledVersion; }
         }
 
         public override IEnumerable<IProjectContextInfo> GetSelectedProjects(UserAction action)

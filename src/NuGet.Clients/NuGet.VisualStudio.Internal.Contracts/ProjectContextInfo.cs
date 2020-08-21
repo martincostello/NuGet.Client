@@ -119,21 +119,17 @@ namespace NuGet.VisualStudio.Internal.Contracts
         internal static NuGetProjectKind GetProjectKind(NuGetProject nugetProject)
         {
             NuGetProjectKind projectKind = NuGetProjectKind.Unknown;
-            if (nugetProject is INuGetIntegratedProject)
+            if (nugetProject is BuildIntegratedNuGetProject)
             {
-                projectKind = NuGetProjectKind.Classic;
+                projectKind = NuGetProjectKind.PackageReference;
+            }
+            else if (nugetProject is MSBuildNuGetProject)
+            {
+                projectKind = NuGetProjectKind.PackagesConfig;
             }
             else if (nugetProject is ProjectKNuGetProjectBase)
             {
                 projectKind = NuGetProjectKind.ProjectK;
-            }
-            else if (nugetProject is MSBuildNuGetProject)
-            {
-                projectKind = NuGetProjectKind.MSBuild;
-            }
-            else if (nugetProject is BuildIntegratedNuGetProject)
-            {
-                projectKind = NuGetProjectKind.BuildIntegrated;
             }
 
             return projectKind;
