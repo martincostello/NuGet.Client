@@ -95,11 +95,15 @@ namespace NuGet.PackageManagement.UI
 
             if (Model.IsSolution)
             {
-                _detailModel = await PackageSolutionDetailControlModel.CreateAsync(Model.Context.SolutionManager, Model.Context.Projects, Model.Context.PackageManagerProviders, CancellationToken.None);
+                _detailModel = await PackageSolutionDetailControlModel.CreateAsync(
+                    Model.Context.SolutionManagerService,
+                    Model.Context.Projects,
+                    Model.Context.PackageManagerProviders,
+                    CancellationToken.None);
             }
             else
             {
-                _detailModel = new PackageDetailControlModel(Model.Context.SolutionManager, Model.Context.Projects);
+                _detailModel = PackageDetailControlModel.Create(Model.Context.SolutionManagerService, Model.Context.Projects);
             }
 
             if (_windowSearchHostFactory != null)
@@ -580,7 +584,7 @@ namespace NuGet.PackageManagement.UI
         {
             if (Model.Context.PackageRestoreManager != null)
             {
-                RestoreBar = new PackageRestoreBar(Model.Context.SolutionManager, Model.Context.PackageRestoreManager);
+                RestoreBar = PackageRestoreBar.Create(Model.Context.SolutionManagerService, Model.Context.PackageRestoreManager);
                 DockPanel.SetDock(RestoreBar, Dock.Top);
 
                 _root.Children.Insert(0, RestoreBar);

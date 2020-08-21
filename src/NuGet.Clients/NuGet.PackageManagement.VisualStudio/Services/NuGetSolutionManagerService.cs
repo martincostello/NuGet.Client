@@ -82,6 +82,13 @@ namespace NuGet.PackageManagement.VisualStudio
             GC.SuppressFinalize(this);
         }
 
+        public async ValueTask<string> GetSolutionDirectoryAsync(CancellationToken cancellationToken)
+        {
+            await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+            return SolutionManager.SolutionDirectory;
+        }
+
         private static string CreateProjectActionId()
         {
             return Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);

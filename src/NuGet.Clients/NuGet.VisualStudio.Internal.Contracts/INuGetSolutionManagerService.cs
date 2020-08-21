@@ -4,6 +4,8 @@
 #nullable enable
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NuGet.VisualStudio.Internal.Contracts
 {
@@ -14,5 +16,7 @@ namespace NuGet.VisualStudio.Internal.Contracts
         event EventHandler<IProjectContextInfo> ProjectRenamed;
         event EventHandler<IProjectContextInfo> ProjectUpdated;
         event EventHandler<IProjectContextInfo> AfterProjectRenamed;
+
+        ValueTask<string> GetSolutionDirectoryAsync(CancellationToken cancellationToken);
     }
 }

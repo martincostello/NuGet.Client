@@ -88,8 +88,7 @@ namespace NuGetConsole.Implementation
         /// Standard constructor for the tool window.
         /// </summary>
         public PowerConsoleToolWindow()
-            :
-                base(null)
+            : base(null)
         {
             Caption = Resources.ToolWindowTitle;
             BitmapResourceID = 301;
@@ -175,10 +174,8 @@ namespace NuGetConsole.Implementation
         {
             base.OnClose();
 
-            if (_wpfConsole != null)
-            {
-                _wpfConsole.Dispose();
-            }
+            _wpfConsole?.Dispose();
+            _consoleParentPane?.Dispose();
         }
 
         /// <summary>
