@@ -2240,6 +2240,15 @@ namespace NuGet.Commands {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The original target frameworks value must match the aliases. Original target frameworks: {0}, aliases: {1}..
+        /// </summary>
+        internal static string SpecValidation_OriginalTargetFrameworksMustMatchAliases {
+            get {
+                return ResourceManager.GetString("SpecValidation_OriginalTargetFrameworksMustMatchAliases", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Duplicate frameworks found: &apos;{0}&apos;..
         /// </summary>
         internal static string SpecValidationDuplicateFrameworks {

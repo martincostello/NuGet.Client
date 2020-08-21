@@ -8,6 +8,7 @@ using System.Linq;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
 using NuGet.ProjectModel;
+using NuGet.Shared;
 
 namespace NuGet.Commands
 {
@@ -215,17 +216,21 @@ namespace NuGet.Commands
                 throw RestoreSpecException.Create(message, files);
             }
 
-            //Original TargetFrameworks must match the aliases. TODO NK 
-
-            if (spec.RestoreMetadata.OriginalTargetFrameworks.Count < 1)
+            //OriginalTargetFrameworks must match the aliases.
+            if (spec.RestoreMetadata.TargetFrameworks.Count > 1)
             {
-                var message = string.Format(
-                    CultureInfo.CurrentCulture,
-                    Strings.MissingRequiredPropertyForProjectType,
-                    nameof(spec.RestoreMetadata.OriginalTargetFrameworks),
-                    ProjectStyle.PackageReference.ToString());
+                var aliases = spec.RestoreMetadata.TargetFrameworks.Select(e => e.TargetAlias);
 
-                throw RestoreSpecException.Create(message, files);
+                if (!EqualityUtility.OrderedEquals(aliases, spec.RestoreMetadata.OriginalTargetFrameworks, e => e, StringComparer.OrdinalIgnoreCase, StringComparer.OrdinalIgnoreCase))
+                {
+                    var message = string.Format(
+                        CultureInfo.CurrentCulture,
+                        Strings.SpecValidation_OriginalTargetFrameworksMustMatchAliases,
+                        string.Join(";", spec.RestoreMetadata.OriginalTargetFrameworks),
+                        string.Join(";", aliases)
+                        );
+                    throw RestoreSpecException.Create(message, files);
+                }
             }
         }
 
