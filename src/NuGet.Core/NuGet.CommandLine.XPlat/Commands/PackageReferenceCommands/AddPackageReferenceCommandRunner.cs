@@ -209,6 +209,7 @@ namespace NuGet.CommandLine.XPlat
                     packageReferenceArgs.PackageId,
                     packageReferenceArgs.ProjectPath));
 
+                // TODO NK - fix it here too.
                 var compatibleOriginalFrameworks = originalPackageSpec.RestoreMetadata
                     .OriginalTargetFrameworks
                     .Where(s => compatibleFrameworks.Contains(NuGetFramework.Parse(s)));

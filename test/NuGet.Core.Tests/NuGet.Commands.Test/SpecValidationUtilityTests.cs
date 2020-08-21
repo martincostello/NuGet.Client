@@ -310,14 +310,13 @@ namespace NuGet.Commands.Test
         [Fact]
         public void SpecValidationUtility_UAP_VerifyOutputPath()
         {
-
             // Arrange
             var spec = new DependencyGraphSpec();
             spec.AddRestore("a");
 
             var targetFramework1 = new TargetFrameworkInformation()
             {
-                FrameworkName = NuGetFramework.Parse("net45")
+                FrameworkName = NuGetFramework.Parse("net45"),
             };
 
             var info = new[] { targetFramework1 };
@@ -507,7 +506,8 @@ namespace NuGet.Commands.Test
         {
             var targetFramework1 = new TargetFrameworkInformation()
             {
-                FrameworkName = NuGetFramework.Parse("net45")
+                FrameworkName = NuGetFramework.Parse("net45"),
+                TargetAlias = "net45",
             };
 
             var info = new[] { targetFramework1 };

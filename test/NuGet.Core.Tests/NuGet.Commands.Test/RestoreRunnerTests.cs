@@ -13,6 +13,7 @@ using NuGet.LibraryModel;
 using NuGet.ProjectModel;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using NuGet.Shared;
 using NuGet.Test.Utility;
 using Xunit;
 
@@ -242,6 +243,7 @@ namespace NuGet.Commands.Test
 
                 var specPath1 = Path.Combine(project1.FullName, "project.json");
                 var spec1 = JsonPackageSpecReader.GetPackageSpec(project1Json, "project1", specPath1);
+                spec1.TargetFrameworks.Single().TargetAlias = "net45";
                 spec1.RestoreMetadata = new ProjectRestoreMetadata
                 {
                     OutputPath = Path.Combine(project1.FullName, "obj"),
@@ -388,13 +390,15 @@ namespace NuGet.Commands.Test
 
             var targetFrameworkInfo1 = new TargetFrameworkInformation
             {
-                FrameworkName = NuGetFramework.Parse("net45")
+                FrameworkName = NuGetFramework.Parse("net45"),
+                TargetAlias = "net45",
             };
             var frameworks1 = new[] { targetFrameworkInfo1 };
 
             var targetFrameworkInfo2 = new TargetFrameworkInformation
             {
-                FrameworkName = NuGetFramework.Parse("net45")
+                FrameworkName = NuGetFramework.Parse("net45"),
+                TargetAlias = "net45",
             };
             var frameworks2 = new[] { targetFrameworkInfo2 };
 
@@ -408,7 +412,6 @@ namespace NuGet.Commands.Test
                     ProjectStyle = ProjectStyle.PackageReference
                 }
             };
-            // TODO NK - conitnue here
             spec1.RestoreMetadata.OriginalTargetFrameworks.Add("net45");
 
             var spec2 = new PackageSpec(frameworks2)
@@ -538,13 +541,15 @@ namespace NuGet.Commands.Test
 
             var targetFrameworkInfo1 = new TargetFrameworkInformation
             {
-                FrameworkName = NuGetFramework.Parse("net45")
+                FrameworkName = NuGetFramework.Parse("net45"),
+                TargetAlias = "net45",
             };
             var frameworks1 = new[] { targetFrameworkInfo1 };
 
             var targetFrameworkInfo2 = new TargetFrameworkInformation
             {
-                FrameworkName = NuGetFramework.Parse("net45")
+                FrameworkName = NuGetFramework.Parse("net45"),
+                TargetAlias = "net45",
             };
             var frameworks2 = new[] { targetFrameworkInfo2 };
 
@@ -620,7 +625,7 @@ namespace NuGet.Commands.Test
                     }
                 });
 
-                spec1.RestoreMetadata.TargetFrameworks.Add(new ProjectRestoreMetadataFrameworkInfo(NuGetFramework.Parse("net45")));
+                spec1.RestoreMetadata.TargetFrameworks.Add(new ProjectRestoreMetadataFrameworkInfo(NuGetFramework.Parse("net45")) { TargetAlias = "net45" });
                 spec1.RestoreMetadata.TargetFrameworks
                     .Single()
                     .ProjectReferences
