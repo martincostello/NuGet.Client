@@ -232,8 +232,6 @@ namespace NuGet.Commands
                     throw RestoreSpecException.Create(message, files);
                 }
             }
-
-            // Match the aliases for both types of TargetFrameworks
         }
 
         private static void ValidateProjectSpecUAP(PackageSpec spec, IEnumerable<string> files)
